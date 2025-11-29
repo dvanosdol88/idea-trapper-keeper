@@ -41,12 +41,27 @@ export function VendorTable({ vendors, onDelete, onEdit }: VendorTableProps) {
                                 </span>
                             </td>
                             <td className="px-6 py-4">
-                                <div className="flex flex-wrap gap-2">
-                                    {vendor.categories && Object.keys(vendor.categories).map((cat) => (
-                                        <span key={cat} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-slate-800 text-slate-300 border border-slate-700">
-                                            {cat}
-                                        </span>
-                                    ))}
+                                <div className="flex flex-wrap gap-2" title={vendor.categories ? Object.keys(vendor.categories).join(', ') : ''}>
+                                    {(() => {
+                                        const categories = vendor.categories ? Object.keys(vendor.categories) : [];
+                                        const visibleCategories = categories.slice(0, 2);
+                                        const remainingCount = categories.length - 2;
+
+                                        return (
+                                            <>
+                                                {visibleCategories.map((cat) => (
+                                                    <span key={cat} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-slate-800 text-slate-300 border border-slate-700">
+                                                        {cat}
+                                                    </span>
+                                                ))}
+                                                {remainingCount > 0 && (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-slate-700 text-slate-400 border border-slate-600 cursor-help">
+                                                        +{remainingCount} more
+                                                    </span>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                             </td>
                             <td className="px-6 py-4 text-slate-400">-</td>
