@@ -88,16 +88,23 @@ export function VendorMatrix() {
 
     const filteredVendors = vendors.filter((vendor) => {
         if (!vendor) return false;
-        const term = searchTerm.toLowerCase();
-        const inName = vendor.name?.toLowerCase().includes(term) || false;
-        const inType = vendor.type?.toLowerCase().includes(term) || false;
 
-        const categories = vendor.categories || {};
-        const inCategories = Object.keys(categories).some(cat => cat.toLowerCase().includes(term));
-        const inNotes = Object.values(categories).some(val => val?.note?.toLowerCase().includes(term));
-        const inStatus = Object.values(categories).some(val => val?.status?.toLowerCase().includes(term));
+        const terms = searchTerm.toLowerCase().split(',').map(t => t.trim()).filter(t => t.length > 0);
 
-        return inName || inType || inCategories || inNotes || inStatus;
+        if (terms.length === 0) return true; // Show all if no valid search terms
+
+        // Check if ANY of the terms match ANY of the fields
+        return terms.some(term => {
+            const inName = vendor.name?.toLowerCase().includes(term) || false;
+            const inType = vendor.type?.toLowerCase().includes(term) || false;
+
+            const categories = vendor.categories || {};
+            const inCategories = Object.keys(categories).some(cat => cat.toLowerCase().includes(term));
+            const inNotes = Object.values(categories).some(val => val?.note?.toLowerCase().includes(term));
+            const inStatus = Object.values(categories).some(val => val?.status?.toLowerCase().includes(term));
+
+            return inName || inType || inCategories || inNotes || inStatus;
+        });
     });
 
     return (
