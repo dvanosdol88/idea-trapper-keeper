@@ -1,44 +1,14 @@
-import { useState, useEffect } from 'react';
-import { IdeaInput } from './components/IdeaInput';
-import { QuadrantDashboard } from './components/QuadrantDashboard';
-import { ChallengeModal } from './components/ChallengeModal';
-import { useIdeaStore, Category } from './store/ideaStore';
-import { BrainCircuit } from 'lucide-react';
-import { addIdea as addIdeaToDb, subscribeToIdeas } from './lib/db';
+import { useState } from 'react';
+import { BrainCircuit, Lightbulb, Calendar, Table2 } from 'lucide-react';
+import { IdeaVault } from './components/IdeaVault';
+import { TimelineBoard } from './components/TimelineBoard';
+import { VendorMatrix } from './components/VendorMatrix';
+import { cn } from './lib/utils';
+
+type Tab = 'ideas' | 'timeline' | 'vendors';
 
 function App() {
-    const setIdeas = useIdeaStore((state) => state.setIdeas);
-
-    const [modalOpen, setModalOpen] = useState(false);
-    const [pendingIdea, setPendingIdea] = useState<{ text: string; challenge: string; category: Category; type: 'idea' | 'question' } | null>(null);
-
-    useEffect(() => {
-        const unsubscribe = subscribeToIdeas((ideas) => {
-            setIdeas(ideas);
-        });
-        return () => unsubscribe();
-    }, [setIdeas]);
-
-    const handleChallenge = (text: string, challenge: string, category: Category, type: 'idea' | 'question') => {
-        setPendingIdea({ text, challenge, category, type });
-        setModalOpen(true);
-    };
-
-    const handleConfirmIdea = async (finalText: string) => {
-        if (pendingIdea) {
-            await addIdeaToDb({
-                text: finalText,
-                category: pendingIdea.category,
-                timestamp: Date.now(),
-                refined: finalText !== pendingIdea.text,
-                challengeResponse: pendingIdea.challenge,
-                type: pendingIdea.type,
-                notes: []
-            });
-        }
-        setModalOpen(false);
-        setPendingIdea(null);
-    };
+    const [activeTab, setActiveTab] = useState<Tab>('ideas');
 
     return (
         <div className="min-h-screen bg-brand-dark text-slate-100 selection:bg-brand-primary/30">
@@ -49,9 +19,50 @@ function App() {
                             <BrainCircuit className="w-6 h-6 text-brand-primary" />
                         </div>
                         <h1 className="text-xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-                            Idea Trapper Keeper
+                            RIA Command Center
                         </h1>
                     </div>
+
+                    {/* Tab Navigation */}
+                    <nav className="flex items-center gap-1 bg-slate-900/50 p-1 rounded-lg border border-slate-800">
+                        <button
+                            onClick={() => setActiveTab('ideas')}
+                            className={cn(
+                                "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all",
+                                activeTab === 'ideas'
+                                    ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/20"
+                                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                            )}
+                        >
+                            <Lightbulb className="w-4 h-4" />
+                            Ideas
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('timeline')}
+                            className={cn(
+                                "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all",
+                                activeTab === 'timeline'
+                                    ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/20"
+                                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                            )}
+                        >
+                            <Calendar className="w-4 h-4" />
+                            Timeline
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('vendors')}
+                            className={cn(
+                                "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all",
+                                activeTab === 'vendors'
+                                    ? "bg-brand-primary text-white shadow-lg shadow-brand-primary/20"
+                                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                            )}
+                        >
+                            <Table2 className="w-4 h-4" />
+                            Vendor Matrix
+                        </button>
+                    </nav>
+
                     <div className="text-sm text-slate-500 font-medium">
                         Flat-Fee RIA Edition
                     </div>
@@ -59,32 +70,10 @@ function App() {
             </header>
 
             <main className="max-w-7xl mx-auto px-4 py-12">
-                <div className="text-center mb-12">
-                    <h2 className="text-4xl font-bold text-white mb-4">
-                        Capture & Refine Your Strategy
-                    </h2>
-                    <p className="text-slate-400 max-w-2xl mx-auto text-lg">
-                        Voice-enabled idea organization aligned with your "Flat Fee/High Tech" UVP.
-                        Speak your mind, face the challenge, and build your firm.
-                    </p>
-                </div>
-
-                <IdeaInput onChallenge={handleChallenge} />
-
-                <div className="mt-16">
-                    <QuadrantDashboard />
-                </div>
+                {activeTab === 'ideas' && <IdeaVault />}
+                {activeTab === 'timeline' && <TimelineBoard />}
+                {activeTab === 'vendors' && <VendorMatrix />}
             </main>
-
-            {pendingIdea && (
-                <ChallengeModal
-                    isOpen={modalOpen}
-                    onClose={() => setModalOpen(false)}
-                    idea={pendingIdea.text}
-                    challengeQuestion={pendingIdea.challenge}
-                    onConfirm={handleConfirmIdea}
-                />
-            )}
         </div>
     );
 }
