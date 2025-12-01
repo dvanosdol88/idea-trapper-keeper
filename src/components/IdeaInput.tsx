@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Mic, Send, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { analyzeIdea } from '../lib/analyzer';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
 
 interface IdeaInputProps {
-    onChallenge: (idea: string, challenge: string, category: any, type: 'idea' | 'question') => void;
+    onChallenge?: (idea: string, challenge: string, category: any, type: 'idea' | 'question') => void;
 }
 
-export function IdeaInput({ onChallenge }: IdeaInputProps) {
+export function IdeaInput({ }: IdeaInputProps) {
     const [text, setText] = useState('');
     const [isListening, setIsListening] = useState(false);
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     // Simple Web Speech API implementation
     useEffect(() => {
@@ -26,7 +27,8 @@ export function IdeaInput({ onChallenge }: IdeaInputProps) {
             const transcript = event.results[0][0].transcript;
             setText(transcript);
             setIsListening(false);
-            handleSubmit(transcript);
+            // Optional: Auto-submit on voice end? For now just set text.
+            // handleSubmit(transcript); 
         };
 
         recognition.onerror = () => setIsListening(false);
@@ -44,17 +46,26 @@ export function IdeaInput({ onChallenge }: IdeaInputProps) {
     const handleSubmit = async (input: string) => {
         if (!input.trim()) return;
 
-        setIsAnalyzing(true);
+        setIsSaving(true);
 
-        // Simulate analysis delay for effect
-        setTimeout(() => {
-            const analysis = analyzeIdea(input);
-            setIsAnalyzing(false);
+        try {
+            await addDoc(collection(db, "ideas"), {
+                text: input,
+                category: "D", // Default to Miscellaneous
+                timestamp: Date.now(),
+                type: 'idea',
+                refined: false,
+                notes: []
+            });
+
             setText('');
-
-            // Trigger the challenge flow
-            onChallenge(input, analysis.challengeQuestion || "How does this add value?", analysis.suggestedCategory, analysis.type);
-        }, 800);
+            alert('Idea Captured!');
+        } catch (error) {
+            console.error("Error adding document: ", error);
+            alert('Error capturing idea. See console.');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -79,15 +90,15 @@ export function IdeaInput({ onChallenge }: IdeaInputProps) {
                         onKeyDown={(e) => e.key === 'Enter' && handleSubmit(text)}
                         placeholder={isListening ? "Listening..." : "Say or type: 'New Idea: ...'"}
                         className="flex-1 bg-transparent border-none focus:ring-0 text-lg text-slate-100 placeholder-slate-500 px-4"
-                        disabled={isAnalyzing}
+                        disabled={isSaving}
                     />
 
                     <button
                         onClick={() => handleSubmit(text)}
-                        disabled={!text.trim() || isAnalyzing}
+                        disabled={!text.trim() || isSaving}
                         className="p-3 bg-brand-primary hover:bg-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {isAnalyzing ? <Loader2 className="w-6 h-6 animate-spin" /> : <Send className="w-6 h-6" />}
+                        {isSaving ? <Loader2 className="w-6 h-6 animate-spin" /> : <Send className="w-6 h-6" />}
                     </button>
                 </div>
             </div>

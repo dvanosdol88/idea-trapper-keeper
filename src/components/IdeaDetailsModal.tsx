@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Clock, MessageSquare } from 'lucide-react';
+import { X, Send, Clock, MessageSquare, CheckSquare } from 'lucide-react';
 import { Idea, useIdeaStore } from '../store/ideaStore';
 import { cn } from '../lib/utils';
+import { addNoteToIdea } from '../lib/db';
+import { createLinearIssue, isLinearConfigured } from '../lib/linearService';
 
 interface IdeaDetailsModalProps {
     idea: Idea;
@@ -10,14 +12,58 @@ interface IdeaDetailsModalProps {
     onClose: () => void;
 }
 
-export function IdeaDetailsModal({ idea, isOpen, onClose }: IdeaDetailsModalProps) {
+export function IdeaDetailsModal({ idea: initialIdea, isOpen, onClose }: IdeaDetailsModalProps) {
     const [noteText, setNoteText] = useState('');
+    const [isExporting, setIsExporting] = useState(false);
     const addNote = useIdeaStore((state) => state.addNote);
 
-    const handleAddNote = () => {
+    // Get the latest version of the idea from the store to ensure reactivity
+    const idea = useIdeaStore((state) => state.ideas.find((i) => i.id === initialIdea.id)) || initialIdea;
+
+    const handleAddNote = async () => {
         if (!noteText.trim()) return;
+
+        // Optimistic update
         addNote(idea.id, noteText);
+
+        // Persist to DB
+        try {
+            await addNoteToIdea(idea.id, noteText);
+        } catch (error) {
+            console.error("Failed to persist note:", error);
+            // Optionally revert optimistic update here
+        }
+
         setNoteText('');
+    };
+
+    const handleExportToLinear = async () => {
+        if (!isLinearConfigured()) {
+            alert("Please configure your Linear API key in the .env file.");
+            return;
+        }
+
+        setIsExporting(true);
+        try {
+            const description = `
+**Original Idea:**
+${idea.text}
+
+**Gap Analysis Challenge:**
+${idea.challengeResponse || "N/A"}
+
+**Notes:**
+${idea.notes?.map(n => `- ${n.text} (${new Date(n.timestamp).toLocaleString()})`).join('\n') || "None"}
+            `;
+
+            const issue = await createLinearIssue(idea.text, description);
+            alert(`Successfully created Linear issue: ${issue.identifier}`);
+        } catch (error) {
+            console.error(error);
+            alert("Failed to create Linear issue. Check console for details.");
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     // Sort notes by timestamp ascending (oldest first)
@@ -56,9 +102,19 @@ export function IdeaDetailsModal({ idea, isOpen, onClose }: IdeaDetailsModalProp
                                 </div>
                                 <h3 className="text-xl font-semibold text-slate-100 leading-snug">{idea.text}</h3>
                             </div>
-                            <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
-                                <X className="w-6 h-6" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleExportToLinear}
+                                    disabled={isExporting}
+                                    className="text-slate-400 hover:text-brand-primary transition-colors disabled:opacity-50"
+                                    title="Export to Linear"
+                                >
+                                    <CheckSquare className="w-6 h-6" />
+                                </button>
+                                <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Timeline Content */}

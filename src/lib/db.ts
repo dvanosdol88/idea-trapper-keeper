@@ -1,4 +1,4 @@
-import { collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, arrayUnion } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { Idea } from "../store/ideaStore";
 
@@ -30,4 +30,23 @@ export const subscribeToIdeas = (callback: (ideas: Idea[]) => void) => {
     });
 
     return unsubscribe;
+};
+
+export const addNoteToIdea = async (ideaId: string, noteText: string) => {
+    try {
+        const note = {
+            id: crypto.randomUUID(),
+            text: noteText,
+            timestamp: Date.now()
+        };
+
+        const ideaRef = doc(db, COLLECTION_NAME, ideaId);
+        await updateDoc(ideaRef, {
+            notes: arrayUnion(note)
+        });
+        return note;
+    } catch (e) {
+        console.error("Error adding note: ", e);
+        throw e;
+    }
 };
